@@ -233,13 +233,6 @@ typedef enum
 #else
     #define taskENTER_CRITICAL_FROM_ISR()                           portENTER_CRITICAL_FROM_ISR()
 #endif
-#if ( ( portUSING_GRANULAR_LOCKS == 1 ) && ( configNUMBER_OF_CORES > 1 ) )
-    #define taskLOCK_DATA_GROUP( pxTaskSpinlock, pxISRSpinlock )    portLOCK_DATA_GROUP( ( portSPINLOCK_TYPE * ) pxTaskSpinlock, ( portSPINLOCK_TYPE * ) pxISRSpinlock )
-    #define taskLOCK_DATA_GROUP_FROM_ISR( pxISRSpinlock )           portLOCK_DATA_GROUP_FROM_ISR( pxISRSpinlock )
-#else /* #if ( ( portUSING_GRANULAR_LOCKS == 1 ) && ( configNUMBER_OF_CORES > 1 ) ) */
-    #define taskLOCK_DATA_GROUP( pxTaskSpinlock, pxISRSpinlock )    taskENTER_CRITICAL()
-    #define taskLOCK_DATA_GROUP_FROM_ISR( pxISRSpinlock )           taskENTER_CRITICAL_FROM_ISR()
-#endif /* #if ( ( portUSING_GRANULAR_LOCKS == 1 ) && ( configNUMBER_OF_CORES > 1 ) ) */
 
 /**
  * task. h
@@ -259,13 +252,6 @@ typedef enum
 #else
     #define taskEXIT_CRITICAL_FROM_ISR( x )                           portEXIT_CRITICAL_FROM_ISR( x )
 #endif
-#if ( ( portUSING_GRANULAR_LOCKS == 1 ) && ( configNUMBER_OF_CORES > 1 ) )
-    #define taskUNLOCK_DATA_GROUP( pxTaskSpinlock, pxISRSpinlock )    portUNLOCK_DATA_GROUP( ( portSPINLOCK_TYPE * ) pxTaskSpinlock, ( portSPINLOCK_TYPE * ) pxISRSpinlock )
-    #define taskUNLOCK_DATA_GROUP_FROM_ISR( x, pxISRSpinlock )        portUNLOCK_DATA_GROUP_FROM_ISR( x, pxISRSpinlock )
-#else /* #if ( ( portUSING_GRANULAR_LOCKS == 1 ) && ( configNUMBER_OF_CORES > 1 ) ) */
-    #define taskUNLOCK_DATA_GROUP( pxTaskSpinlock, pxISRSpinlock )    taskEXIT_CRITICAL()
-    #define taskUNLOCK_DATA_GROUP_FROM_ISR( x, pxISRSpinlock )        taskEXIT_CRITICAL_FROM_ISR( x )
-#endif /* #if ( ( portUSING_GRANULAR_LOCKS == 1 ) && ( configNUMBER_OF_CORES > 1 ) ) */
 
 /**
  * task. h
