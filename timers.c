@@ -79,6 +79,24 @@
     #define tmrSTATUS_IS_STATICALLY_ALLOCATED    ( 0x02U )
     #define tmrSTATUS_IS_AUTORELOAD              ( 0x04U )
 
+/*
+ * Macro to mark the start of a critical code region.
+ */
+    #if ( portUSING_GRANULAR_LOCKS == 1 )
+        #define tmrENTER_CRITICAL( pxTaskSpinlock, pxISRSpinlock )    portLOCK_DATA_GROUP( ( portSPINLOCK_TYPE * ) pxTaskSpinlock, ( portSPINLOCK_TYPE * ) pxISRSpinlock )
+    #else /* #if ( portUSING_GRANULAR_LOCKS == 1 ) */
+        #define tmrENTER_CRITICAL( pxTaskSpinlock, pxISRSpinlock )    do { ( void ) pxTaskSpinlock; ( void ) pxISRSpinlock; taskENTER_CRITICAL(); } while( 0 )
+    #endif /* #if ( portUSING_GRANULAR_LOCKS == 1 ) */
+
+/*
+ * Macro to mark the end of a critical code region.
+ */
+    #if ( portUSING_GRANULAR_LOCKS == 1 )
+        #define tmrEXIT_CRITICAL( pxTaskSpinlock, pxISRSpinlock )    portUNLOCK_DATA_GROUP( ( portSPINLOCK_TYPE * ) pxTaskSpinlock, ( portSPINLOCK_TYPE * ) pxISRSpinlock )
+    #else /* #if ( portUSING_GRANULAR_LOCKS == 1 ) */
+        #define tmrEXIT_CRITICAL( pxTaskSpinlock, pxISRSpinlock )    do { ( void ) pxTaskSpinlock; ( void ) pxISRSpinlock; taskEXIT_CRITICAL(); } while( 0 )
+    #endif /* #if ( portUSING_GRANULAR_LOCKS == 1 ) */
+
 /* The definition of the timers themselves. */
     typedef struct tmrTimerControl                                               /* The old naming convention is used to prevent breaking kernel aware debuggers. */
     {
@@ -148,6 +166,11 @@
 /* A queue that is used to send commands to the timer service task. */
     PRIVILEGED_DATA static QueueHandle_t xTimerQueue = NULL;
     PRIVILEGED_DATA static TaskHandle_t xTimerTaskHandle = NULL;
+
+    #if ( ( portUSING_GRANULAR_LOCKS == 1 ) && ( configNUMBER_OF_CORES > 1 ) )
+        PRIVILEGED_DATA static portSPINLOCK_TYPE xTaskSpinlock = portINIT_TIMERS_TASK_SPINLOCK_STATIC;
+        PRIVILEGED_DATA static portSPINLOCK_TYPE xISRSpinlock = portINIT_TIMERS_ISR_SPINLOCK_STATIC;
+    #endif /* #if ( ( portUSING_GRANULAR_LOCKS == 1 ) && ( configNUMBER_OF_CORES > 1 ) ) */
 
 /*-----------------------------------------------------------*/
 
@@ -576,7 +599,7 @@
         traceENTER_vTimerSetReloadMode( xTimer, xAutoReload );
 
         configASSERT( xTimer );
-        taskENTER_CRITICAL();
+        tmrENTER_CRITICAL( &xTaskSpinlock, &xISRSpinlock );
         {
             if( xAutoReload != pdFALSE )
             {
@@ -587,7 +610,7 @@
                 pxTimer->ucStatus &= ( ( uint8_t ) ~tmrSTATUS_IS_AUTORELOAD );
             }
         }
-        taskEXIT_CRITICAL();
+        tmrEXIT_CRITICAL( &xTaskSpinlock, &xISRSpinlock );
 
         traceRETURN_vTimerSetReloadMode();
     }
@@ -601,7 +624,7 @@
         traceENTER_xTimerGetReloadMode( xTimer );
 
         configASSERT( xTimer );
-        portBASE_TYPE_ENTER_CRITICAL();
+        tmrENTER_CRITICAL( &xTaskSpinlock, &xISRSpinlock );
         {
             if( ( pxTimer->ucStatus & tmrSTATUS_IS_AUTORELOAD ) == 0U )
             {
@@ -614,7 +637,7 @@
                 xReturn = pdTRUE;
             }
         }
-        portBASE_TYPE_EXIT_CRITICAL();
+        tmrEXIT_CRITICAL( &xTaskSpinlock, &xISRSpinlock );
 
         traceRETURN_xTimerGetReloadMode( xReturn );
 
@@ -1113,7 +1136,7 @@
         /* Check that the list from which active timers are referenced, and the
          * queue used to communicate with the timer service, have been
          * initialised. */
-        taskENTER_CRITICAL();
+        tmrENTER_CRITICAL( &xTaskSpinlock, &xISRSpinlock );
         {
             if( xTimerQueue == NULL )
             {
@@ -1155,7 +1178,7 @@
                 mtCOVERAGE_TEST_MARKER();
             }
         }
-        taskEXIT_CRITICAL();
+        tmrEXIT_CRITICAL( &xTaskSpinlock, &xISRSpinlock );
     }
 /*-----------------------------------------------------------*/
 
@@ -1169,7 +1192,7 @@
         configASSERT( xTimer );
 
         /* Is the timer in the list of active timers? */
-        portBASE_TYPE_ENTER_CRITICAL();
+        tmrENTER_CRITICAL( &xTaskSpinlock, &xISRSpinlock );
         {
             if( ( pxTimer->ucStatus & tmrSTATUS_IS_ACTIVE ) == 0U )
             {
@@ -1180,7 +1203,7 @@
                 xReturn = pdTRUE;
             }
         }
-        portBASE_TYPE_EXIT_CRITICAL();
+        tmrEXIT_CRITICAL( &xTaskSpinlock, &xISRSpinlock );
 
         traceRETURN_xTimerIsTimerActive( xReturn );
 
@@ -1197,11 +1220,11 @@
 
         configASSERT( xTimer );
 
-        taskENTER_CRITICAL();
+        tmrENTER_CRITICAL( &xTaskSpinlock, &xISRSpinlock );
         {
             pvReturn = pxTimer->pvTimerID;
         }
-        taskEXIT_CRITICAL();
+        tmrEXIT_CRITICAL( &xTaskSpinlock, &xISRSpinlock );
 
         traceRETURN_pvTimerGetTimerID( pvReturn );
 
@@ -1218,11 +1241,11 @@
 
         configASSERT( xTimer );
 
-        taskENTER_CRITICAL();
+        tmrENTER_CRITICAL( &xTaskSpinlock, &xISRSpinlock );
         {
             pxTimer->pvTimerID = pvNewID;
         }
-        taskEXIT_CRITICAL();
+        tmrEXIT_CRITICAL( &xTaskSpinlock, &xISRSpinlock );
 
         traceRETURN_vTimerSetTimerID();
     }
